@@ -12,6 +12,8 @@ from crosshair.core import (
 from crosshair.statespace import StateSpace
 from crosshair.tracers import NoTracing, ResumedTracing
 from crosshair.util import IgnoreAttempt, debug
+from crosshair.main import path_cover
+from crosshair.fnutil import FunctionInfo
 
 __version__ = "0.0.24"  # Do not forget to update in setup.py!
 __author__ = "Phillip Schanely"

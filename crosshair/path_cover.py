@@ -1,9 +1,12 @@
 import copy
+import dataclasses
 import enum
 import time
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
-from typing import Callable, List, Optional, Set, TextIO, Type
+from typing import Callable, List, Optional, Set, TextIO, Type, Tuple
+
+from crosshair.libimpl.builtinslib import SymbolicNumberAble
 
 from crosshair.condition_parser import condition_parser
 from crosshair.core import ExceptionFilter, Patched, deep_realize, gen_args
@@ -40,6 +43,18 @@ class PathSummary:
     coverage: CoverageResult
 
 
+def dataclass_ret_to_dict(ret, return_dict):
+    cls = type(ret).__name__
+    tmp = {}
+    for f in dataclasses.fields(ret):
+        dataclass_val = getattr(ret, f.name)
+        if isinstance(dataclass_val,SymbolicNumberAble):
+            z3var = getattr(dataclass_val, "var")
+        else:
+            z3var = dataclass_val
+        tmp[f.name] = z3var
+    return_dict[cls]=tmp
+
 def run_iteration(
     fn: Callable, sig: Signature, space: StateSpace
 ) -> Optional[PathSummary]:
@@ -47,11 +62,38 @@ def run_iteration(
         args = gen_args(sig)
     pre_args = copy.deepcopy(args)
     ret = None
+    return_dict = {}
     with measure_fn_coverage(fn) as coverage, ExceptionFilter() as efilter:
         # coverage = lambda _: CoverageResult(set(), set(), 1.0)
         # with ExceptionFilter() as efilter:
         ret = fn(*args.args, **args.kwargs)
+        with NoTracing():
+            # SVSHI variables are returned either as a dictionnary of dataclasses or a bool
+            if isinstance(ret, Tuple):
+                for e in ret:
+                    if dataclasses.is_dataclass(ret):
+                        dataclass_ret_to_dict(ret, return_dict)
+                    else:
+                        if isinstance(e, SymbolicNumberAble):
+                            v = getattr(e, "var")
+                            return_dict[v.__str__()] = v
+                        else:
+                            return_dict[e.__str__()] = e
+            elif dataclasses.is_dataclass(ret):
+                dataclass_ret_to_dict(ret, return_dict)
+            elif isinstance(ret, dict):
+                for k, v in ret.items():
+                    dataclass_ret_to_dict(v, return_dict)
+            elif isinstance(ret, List):
+                raise NotImplementedError("List aren't implemented yet", type(ret))
+            else:
+                if isinstance(ret, SymbolicNumberAble):
+                    z3var = getattr(ret, "var")
+                else:
+                    z3var = ret
+                return_dict["ret"] = z3var
     space.detach_path()
+    c = copy.deepcopy(space.solver.assertions())
     if efilter.user_exc is not None:
         exc = efilter.user_exc[0]
         debug("user-level exception found", repr(exc), *efilter.user_exc[1])
@@ -61,7 +103,7 @@ def run_iteration(
     else:
         return PathSummary(
             deep_realize(pre_args),
-            deep_realize(ret),
+            [c, return_dict],
             None,
             deep_realize(args),
             coverage(fn),
@@ -70,7 +112,7 @@ def run_iteration(
 
 def path_cover(
     ctxfn: FunctionInfo, options: AnalysisOptions, coverage_type: CoverageType
-) -> List[PathSummary]:
+) -> tuple[list[PathSummary], bool]:
     fn, sig = ctxfn.callable()
     search_root = RootNode()
     condition_start = time.monotonic()
@@ -108,21 +150,7 @@ def path_cover(
             if exhausted:
                 debug("Stopping due to code path exhaustion. (yay!)")
                 break
-    opcodes_found: Set[int] = set()
-    selected: List[PathSummary] = []
-    while paths:
-        next_best = max(
-            paths, key=lambda p: len(p.coverage.offsets_covered - opcodes_found)
-        )
-        cur_offsets = next_best.coverage.offsets_covered
-        if coverage_type == CoverageType.OPCODE:
-            if len(cur_offsets - opcodes_found) == 0:
-                break
-        selected.append(next_best)
-        opcodes_found |= cur_offsets
-        paths = [p for p in paths if p is not next_best]
-    return selected
-
+    return paths, exhausted
 
 def repr_boundargs(boundargs: BoundArguments) -> str:
     pieces = list(map(repr, boundargs.args))
