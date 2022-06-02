@@ -206,7 +206,7 @@ class NumbersTest(unittest.TestCase):
 
         self.assertEqual(*check_ok(f))
 
-    def test_promotion_compare_unknown(self) -> None:
+    def test_promotion_compare_ok(self) -> None:
         def f(i: int, f: float) -> bool:
             """
             pre: i == 7
@@ -215,7 +215,7 @@ class NumbersTest(unittest.TestCase):
             """
             return i == f and f >= i and i >= f
 
-        self.assertEqual(*check_unknown(f))
+        self.assertEqual(*check_ok(f))
 
     def test_numeric_promotions(self) -> None:
         def f(b: bool, i: int) -> Tuple[int, float, float]:
@@ -234,7 +234,7 @@ class NumbersTest(unittest.TestCase):
             """
             return x or y
 
-        self.assertEqual(*check_unknown(f))
+        self.assertEqual(*check_ok(f))
 
     def test_int_reverse_operators(self) -> None:
         def f(i: int) -> float:
@@ -339,7 +339,7 @@ class NumbersTest(unittest.TestCase):
             """post: isinstance(_, float)"""
             return x
 
-        self.assertEqual(*check_unknown(f))
+        self.assertEqual(*check_ok(f))
 
     def test_mismatched_types(self) -> None:
         def f(x: float, y: list) -> float:
@@ -400,6 +400,25 @@ class NumbersTest(unittest.TestCase):
             return x**e
 
         self.assertEqual(*check_fail(make_bigger))
+
+
+def test_warn_float_equality_comparison(capsys):
+    def f(x: float, y: int):
+        """
+        post: _ >= x
+        """
+        if x == y:
+            return x + 1
+        else:
+            return max(x, y)
+
+    assert check_ok(f)[0] == []
+    expected = (
+        "WARNING: You should not compare floats with equality. Floating point "
+        "numbers are not accurate. Use `math.isclose` instead.\n"
+    ) * 3
+    captured = capsys.readouterr()
+    assert captured.err == expected
 
 
 @pytest.mark.parametrize("b", (False, 1, -2.0, NAN, INF, -INF))

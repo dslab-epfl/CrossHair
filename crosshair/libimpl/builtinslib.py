@@ -98,6 +98,7 @@ from crosshair.util import (
     is_iterable,
     memo,
     smtlib_typename,
+    warn,
 )
 from crosshair.z3util import z3IntVal
 
@@ -797,7 +798,12 @@ class SymbolicNumberAble(SymbolicValue, Real):
         return numeric_binop(ops.ge, self, other)
 
     def __eq__(self, other):
+        self.__warn_float_equality_comparison(other)
         return numeric_binop(ops.eq, self, other)
+
+    def __ne__(self, other):
+        self.__warn_float_equality_comparison(other)
+        return super().__ne__(other)
 
     def __add__(self, other):
         return numeric_binop(ops.add, self, other)
@@ -880,6 +886,17 @@ class SymbolicNumberAble(SymbolicValue, Real):
 
     def __format__(self, fmt: str):
         return realize(self).__format__(realize(fmt))
+
+    def __warn_float_equality_comparison(self, other):
+        """Warn equality comparison on floats (inaccurate result)."""
+        with NoTracing():
+            if isinstance(other, (float, SymbolicFloat)) or isinstance(
+                self, SymbolicFloat
+            ):
+                warn(
+                    "You should not compare floats with equality. Floating point "
+                    "numbers are not accurate. Use `math.isclose` instead."
+                )
 
 
 class SymbolicIntable(SymbolicNumberAble, Integral):
@@ -1126,7 +1143,12 @@ _Z3_ONE_HALF = z3.RealVal("1/2")
 class SymbolicFloat(SymbolicNumberAble, AtomicSymbolicValue):
     def __init__(self, smtvar: Union[str, z3.ExprRef], typ: Type = float):
         assert typ is float, f"SymbolicFloat with unexpected python type ({type(typ)})"
-        context_statespace().cap_result_at_unknown()
+        # Note: We model floats by reals in z3. It would be more appropriate to cap the
+        # result at unknown. However, this prevent us from using float values in svshi
+        # (for temperature, humidity, ...). Additionally, svshi users are not supposed
+        # to know about floating point values and they will think of floats as reals.
+        # So, instead, we warn users when comparing floats with equality.
+        # context_statespace().cap_result_at_unknown()
         SymbolicValue.__init__(self, smtvar, typ)
 
     @classmethod
