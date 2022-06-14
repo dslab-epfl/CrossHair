@@ -112,7 +112,7 @@ def run_iteration(
 
 def path_cover(
     ctxfn: FunctionInfo, options: AnalysisOptions, coverage_type: CoverageType
-) -> tuple[list[PathSummary], bool]:
+) -> Tuple[List[PathSummary], bool]:
     fn, sig = ctxfn.callable()
     search_root = RootNode()
     condition_start = time.monotonic()
