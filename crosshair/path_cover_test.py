@@ -23,13 +23,13 @@ regex = FunctionInfo.from_fn(_regex)
 
 def test_path_cover() -> None:
     paths = []
-    path_list,exausted=  path_cover(foo, OPTS, CoverageType.OPCODE)
+    path_list, exausted = path_cover(foo, OPTS, CoverageType.OPCODE)
     assert exausted
     for p in path_list:
         paths.append(p.result[1]['ret'])
     print(paths)
     assert len(paths) == 2
-    path_str = list(map(lambda p:str(p),paths))
+    path_str = list(map(lambda p: str(p), paths))
     assert "100" in path_str and "x_2" in path_str
 
 

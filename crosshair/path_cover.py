@@ -48,15 +48,16 @@ def dataclass_ret_to_dict(ret, return_dict):
     tmp = {}
     for f in dataclasses.fields(ret):
         dataclass_val = getattr(ret, f.name)
-        if isinstance(dataclass_val,SymbolicNumberAble):
+        if isinstance(dataclass_val, SymbolicNumberAble):
             z3var = getattr(dataclass_val, "var")
         else:
             z3var = dataclass_val
         tmp[f.name] = z3var
-    return_dict[cls]=tmp
+    return_dict[cls] = tmp
+
 
 def run_iteration(
-    fn: Callable, sig: Signature, space: StateSpace
+        fn: Callable, sig: Signature, space: StateSpace
 ) -> Optional[PathSummary]:
     with NoTracing():
         args = gen_args(sig)
@@ -111,7 +112,7 @@ def run_iteration(
 
 
 def path_cover(
-    ctxfn: FunctionInfo, options: AnalysisOptions, coverage_type: CoverageType
+        ctxfn: FunctionInfo, options: AnalysisOptions, coverage_type: CoverageType
 ) -> Tuple[List[PathSummary], bool]:
     fn, sig = ctxfn.callable()
     search_root = RootNode()
@@ -132,7 +133,7 @@ def path_cover(
             search_root=search_root,
         )
         with condition_parser(
-            options.analysis_kind
+                options.analysis_kind
         ), Patched(), COMPOSITE_TRACER, StateSpaceContext(space):
             summary = None
             try:
@@ -152,6 +153,7 @@ def path_cover(
                 break
     return paths, exhausted
 
+
 def repr_boundargs(boundargs: BoundArguments) -> str:
     pieces = list(map(repr, boundargs.args))
     pieces.extend(f"{k}={repr(v)}" for k, v in boundargs.kwargs.items())
@@ -159,7 +161,7 @@ def repr_boundargs(boundargs: BoundArguments) -> str:
 
 
 def output_argument_dictionary_paths(
-    fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
+        fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
 ) -> int:
     for path in paths:
         stdout.write("(" + repr_boundargs(path.args) + ")\n")
@@ -168,7 +170,7 @@ def output_argument_dictionary_paths(
 
 
 def output_eval_exression_paths(
-    fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
+        fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
 ) -> int:
     for path in paths:
         stdout.write(fn.__name__ + "(" + repr_boundargs(path.args) + ")\n")
@@ -177,7 +179,7 @@ def output_eval_exression_paths(
 
 
 def output_pytest_paths(
-    fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
+        fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
 ) -> int:
     fn_name = fn.__name__
     lines: List[str] = []
