@@ -22,17 +22,18 @@ regex = FunctionInfo.from_fn(_regex)
 
 
 def test_path_cover() -> None:
-    paths = list(path_cover(foo, OPTS, CoverageType.OPCODE))
+    paths = []
+    path_list,exausted=  path_cover(foo, OPTS, CoverageType.OPCODE)
+    assert exausted
+    for p in path_list:
+        paths.append(p.result[1]['ret'])
+    print(paths)
     assert len(paths) == 2
-    small, large = sorted(paths, key=lambda p: p.result)  # type: ignore
-    assert large.result == 100
-    assert large.args.arguments["x"] > 100
-    assert small.result == small.args.arguments["x"]
+    path_str = list(map(lambda p:str(p),paths))
+    assert "100" in path_str and "x_2" in path_str
 
 
 def test_path_cover_regex() -> None:
-    paths = list(path_cover(regex, OPTS, CoverageType.OPCODE))
-    assert len(paths) == 1
-    paths = list(path_cover(regex, OPTS, CoverageType.PATH))
-    input_output = set((p.args.arguments["x"], p.result) for p in paths)
+    paths, exausted = path_cover(regex, OPTS, CoverageType.OPCODE)
+    input_output = set((p.args.arguments["x"], p.result[1]['ret']) for p in paths)
     assert ("foo", True) in input_output
