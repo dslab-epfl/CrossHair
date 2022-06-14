@@ -100,7 +100,8 @@ def main() -> int:
     if Step.ISORT in selects and Step.ISORT not in skips:
         print("isorting'ing...")
         # fmt: off
-        isort_cmd = ["isort", "."]
+        #ignored __init__.py, otherwise it will cause circular imports error
+        isort_cmd = ["isort", ".","-s","__init__.py"]
         if not overwrite:
             isort_cmd.extend(["--diff", "--check-only"])
         subprocess.check_call(
