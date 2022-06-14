@@ -4,13 +4,12 @@ import enum
 import time
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
-from typing import Callable, List, Optional, Set, TextIO, Type, Tuple
-
-from crosshair.libimpl.builtinslib import SymbolicNumberAble
+from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, Type
 
 from crosshair.condition_parser import condition_parser
 from crosshair.core import ExceptionFilter, Patched, deep_realize, gen_args
 from crosshair.fnutil import FunctionInfo
+from crosshair.libimpl.builtinslib import SymbolicNumberAble
 from crosshair.options import AnalysisOptions
 from crosshair.statespace import (
     CallAnalysis,
@@ -37,7 +36,7 @@ class CoverageType(enum.Enum):
 @dataclass
 class PathSummary:
     args: BoundArguments
-    result: object
+    result: Tuple[List[Any], Dict[str, object]]
     exc: Optional[Type[BaseException]]
     post_args: BoundArguments
     coverage: CoverageResult
@@ -57,20 +56,20 @@ def dataclass_ret_to_dict(ret, return_dict):
 
 
 def run_iteration(
-        fn: Callable, sig: Signature, space: StateSpace
+    fn: Callable, sig: Signature, space: StateSpace
 ) -> Optional[PathSummary]:
     with NoTracing():
         args = gen_args(sig)
     pre_args = copy.deepcopy(args)
     ret = None
-    return_dict = {}
+    return_dict: Dict[str, object] = {}
     with measure_fn_coverage(fn) as coverage, ExceptionFilter() as efilter:
         # coverage = lambda _: CoverageResult(set(), set(), 1.0)
         # with ExceptionFilter() as efilter:
         ret = fn(*args.args, **args.kwargs)
         with NoTracing():
             # SVSHI variables are returned either as a dictionnary of dataclasses or a bool
-            if isinstance(ret, Tuple):
+            if isinstance(ret, tuple):
                 for e in ret:
                     if dataclasses.is_dataclass(ret):
                         dataclass_ret_to_dict(ret, return_dict)
@@ -98,13 +97,13 @@ def run_iteration(
     if efilter.user_exc is not None:
         exc = efilter.user_exc[0]
         debug("user-level exception found", repr(exc), *efilter.user_exc[1])
-        return PathSummary(pre_args, ret, type(exc), args, coverage(fn))
+        return PathSummary(pre_args, (c, return_dict), type(exc), args, coverage(fn))
     elif efilter.ignore:
         return None
     else:
         return PathSummary(
             deep_realize(pre_args),
-            [c, return_dict],
+            (c, return_dict),
             None,
             deep_realize(args),
             coverage(fn),
@@ -112,7 +111,7 @@ def run_iteration(
 
 
 def path_cover(
-        ctxfn: FunctionInfo, options: AnalysisOptions, coverage_type: CoverageType
+    ctxfn: FunctionInfo, options: AnalysisOptions, coverage_type: CoverageType
 ) -> Tuple[List[PathSummary], bool]:
     fn, sig = ctxfn.callable()
     search_root = RootNode()
@@ -133,7 +132,7 @@ def path_cover(
             search_root=search_root,
         )
         with condition_parser(
-                options.analysis_kind
+            options.analysis_kind
         ), Patched(), COMPOSITE_TRACER, StateSpaceContext(space):
             summary = None
             try:
@@ -161,7 +160,7 @@ def repr_boundargs(boundargs: BoundArguments) -> str:
 
 
 def output_argument_dictionary_paths(
-        fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
+    fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
 ) -> int:
     for path in paths:
         stdout.write("(" + repr_boundargs(path.args) + ")\n")
@@ -170,7 +169,7 @@ def output_argument_dictionary_paths(
 
 
 def output_eval_exression_paths(
-        fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
+    fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
 ) -> int:
     for path in paths:
         stdout.write(fn.__name__ + "(" + repr_boundargs(path.args) + ")\n")
@@ -179,7 +178,7 @@ def output_eval_exression_paths(
 
 
 def output_pytest_paths(
-        fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
+    fn: Callable, paths: List[PathSummary], stdout: TextIO, stderr: TextIO
 ) -> int:
     fn_name = fn.__name__
     lines: List[str] = []

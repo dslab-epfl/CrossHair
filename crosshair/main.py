@@ -277,9 +277,9 @@ def command_line_parser() -> argparse.ArgumentParser:
 
 
 def run_watch_loop(
-        watcher: Watcher,
-        max_watch_iterations: int = sys.maxsize,
-        term_lines_rewritable: bool = True,
+    watcher: Watcher,
+    max_watch_iterations: int = sys.maxsize,
+    term_lines_rewritable: bool = True,
 ) -> None:
     restart = True
     stats: Counter[str] = Counter()
@@ -368,8 +368,8 @@ def color(text: str, *effects: AnsiColor) -> str:
 
 
 def messages_merged(
-        messages: MutableMapping[Tuple[str, int], AnalysisMessage],
-        new_messages: Iterable[AnalysisMessage],
+    messages: MutableMapping[Tuple[str, int], AnalysisMessage],
+    new_messages: Iterable[AnalysisMessage],
 ) -> bool:
     any_change = False
     for message in new_messages:
@@ -391,9 +391,9 @@ _MOTD = [
 
 
 def watch(
-        args: argparse.Namespace,
-        options: AnalysisOptionSet,
-        max_watch_iterations=sys.maxsize,
+    args: argparse.Namespace,
+    options: AnalysisOptionSet,
+    max_watch_iterations=sys.maxsize,
 ) -> int:
     if not args.directory:
         print("No files or directories given to watch", file=sys.stderr)
@@ -436,7 +436,7 @@ def format_src_context(filename: str, lineno: int) -> str:
 
 
 def describe_message(
-        message: AnalysisMessage, options: AnalysisOptions
+    message: AnalysisMessage, options: AnalysisOptions
 ) -> Optional[str]:
     if options.report_verbose:
         return long_describe_message(message, options)
@@ -445,7 +445,7 @@ def describe_message(
 
 
 def long_describe_message(
-        message: AnalysisMessage, options: AnalysisOptions
+    message: AnalysisMessage, options: AnalysisOptions
 ) -> Optional[str]:
     tb, desc, state = message.traceback, message.message, message.state
     desc = desc.replace(" when ", "\nwhen ")
@@ -478,7 +478,7 @@ def long_describe_message(
 
 
 def short_describe_message(
-        message: AnalysisMessage, options: AnalysisOptions
+    message: AnalysisMessage, options: AnalysisOptions
 ) -> Optional[str]:
     desc = message.message
     if message.state <= MessageType.PRE_UNSAT:  # type: ignore
@@ -511,7 +511,7 @@ def checked_load(qualname: str, stderr: TextIO) -> Optional[FunctionInfo]:
 
 
 def diffbehavior(
-        args: argparse.Namespace, options: AnalysisOptions, stdout: TextIO, stderr: TextIO
+    args: argparse.Namespace, options: AnalysisOptions, stdout: TextIO, stderr: TextIO
 ) -> int:
     (fn_name1, fn_name2) = (args.fn1, args.fn2)
     fn1 = checked_load(fn_name1, stderr)
@@ -552,7 +552,7 @@ def diffbehavior(
 
 
 def cover(
-        args: argparse.Namespace, options: AnalysisOptions, stdout: TextIO, stderr: TextIO
+    args: argparse.Namespace, options: AnalysisOptions, stdout: TextIO, stderr: TextIO
 ) -> int:
     ctxfn = checked_load(args.fn, stderr)
     if ctxfn is None:
@@ -571,7 +571,7 @@ def cover(
 
 
 def check(
-        args: argparse.Namespace, options: AnalysisOptionSet, stdout: TextIO, stderr: TextIO
+    args: argparse.Namespace, options: AnalysisOptionSet, stdout: TextIO, stderr: TextIO
 ) -> int:
     any_problems = False
     try:

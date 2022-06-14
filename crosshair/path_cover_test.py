@@ -26,7 +26,7 @@ def test_path_cover() -> None:
     path_list, exausted = path_cover(foo, OPTS, CoverageType.OPCODE)
     assert exausted
     for p in path_list:
-        paths.append(p.result[1]['ret'])
+        paths.append(p.result[1]["ret"])
     print(paths)
     assert len(paths) == 2
     path_str = list(map(lambda p: str(p), paths))
@@ -35,5 +35,5 @@ def test_path_cover() -> None:
 
 def test_path_cover_regex() -> None:
     paths, exausted = path_cover(regex, OPTS, CoverageType.OPCODE)
-    input_output = set((p.args.arguments["x"], p.result[1]['ret']) for p in paths)
+    input_output = set((p.args.arguments["x"], p.result[1]["ret"]) for p in paths)
     assert ("foo", True) in input_output
