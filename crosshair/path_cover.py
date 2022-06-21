@@ -42,17 +42,17 @@ class PathSummary:
     coverage: CoverageResult
 
 
-def dataclass_ret_to_dict(ret, return_dict):
-    cls = type(ret).__name__
+def dataclass_ret_to_dict(ret) -> dict[str, Any]:
+    # convert a returned dataclass to a dict of [variable_name,z3_expr or value]
+    if not dataclasses.is_dataclass(ret):
+        debug("unprocessed ret")
+        return ret
     tmp = {}
     for f in dataclasses.fields(ret):
         dataclass_val = getattr(ret, f.name)
-        if isinstance(dataclass_val, SymbolicNumberAble):
-            z3var = getattr(dataclass_val, "var")
-        else:
-            z3var = dataclass_val
+        z3var = extract_value_of_return_var(dataclass_val)
         tmp[f.name] = z3var
-    return_dict[cls] = tmp
+    return tmp
 
 
 def run_iteration(
@@ -68,35 +68,27 @@ def run_iteration(
         # with ExceptionFilter() as efilter:
         ret = fn(*args.args, **args.kwargs)
         with NoTracing():
-            # SVSHI variables are returned either as a dictionnary of dataclasses or a bool
-            if isinstance(ret, tuple):
-                for e in ret:
-                    if dataclasses.is_dataclass(ret):
-                        dataclass_ret_to_dict(ret, return_dict)
-                    else:
-                        if isinstance(e, SymbolicNumberAble):
-                            v = getattr(e, "var")
-                            return_dict[v.__str__()] = v
-                        else:
-                            return_dict[e.__str__()] = e
-            elif dataclasses.is_dataclass(ret):
-                dataclass_ret_to_dict(ret, return_dict)
+            # SVSHI variables are returned either as a dictionary of dataclasses or a bool
+            # The goal is to change the return of realized variables (that have a value)
+            # to symbolic variables (SymbolicNumberAble) that can be used for z3 expressions
+            if dataclasses.is_dataclass(ret):
+                # return is only a dataclass
+                dataclass_class_name = type(ret).__name__
+                return_dict[dataclass_class_name] = dataclass_ret_to_dict(ret)
             elif isinstance(ret, dict):
+                # return is a dict (like in SVSHI iteration)
                 for k, v in ret.items():
-                    dataclass_ret_to_dict(v, return_dict)
+                    return_dict[k] = dataclass_ret_to_dict(v)
             elif isinstance(ret, List):
                 raise NotImplementedError("List aren't implemented yet", type(ret))
             else:
-                if isinstance(ret, SymbolicNumberAble):
-                    z3var = getattr(ret, "var")
-                else:
-                    z3var = ret
+                z3var = extract_value_of_return_var(ret)
                 return_dict["ret"] = z3var
     space.detach_path()
     c = copy.deepcopy(space.solver.assertions())
     if efilter.user_exc is not None:
         exc = efilter.user_exc[0]
-        debug("user-level exception found", repr(exc), *efilter.user_exc[1])
+        print("user-level exception found", repr(exc), *efilter.user_exc[1])
         return PathSummary(pre_args, (c, return_dict), type(exc), args, coverage(fn))
     elif efilter.ignore:
         return None
@@ -108,6 +100,15 @@ def run_iteration(
             deep_realize(args),
             coverage(fn),
         )
+
+
+def extract_value_of_return_var(ret):
+    # extracts if possible the symbolic value of the variable ret
+    if isinstance(ret, SymbolicNumberAble):
+        z3var = getattr(ret, "var")
+    else:
+        z3var = ret
+    return z3var
 
 
 def path_cover(
