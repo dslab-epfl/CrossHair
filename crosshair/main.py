@@ -558,7 +558,7 @@ def cover(
     if ctxfn is None:
         return 2
     options.stats = collections.Counter()
-    paths = path_cover(ctxfn, options, args.coverage_type)
+    paths, _ = path_cover(ctxfn, options, args.coverage_type)
     fn, _ = ctxfn.callable()
     example_output_format = args.example_output_format
     if example_output_format == ExampleOutputFormat.ARGUMENT_DICTIONARY:
